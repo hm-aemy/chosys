@@ -1,0 +1,5 @@
+CompileFlags:
+  CompilationDatabase: ./circt/build
+Diagnostics:
+  Suppress: 
+    - "misc-definitions-in-headers"
