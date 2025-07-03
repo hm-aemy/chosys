@@ -20,6 +20,7 @@
 
 // Malarkey - I think this is just not generally exposed?
 // TODO move elsewhere?
+using namespace circt;
 namespace mlir {
 class ModuleOp;
 }; // namespace mlir
