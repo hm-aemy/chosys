@@ -204,21 +204,21 @@ public:
     w->upto = op.getUpto();
     w->is_signed = op.getIsSigned();
   }
-  void convert_cell(RTLIL::Module *mod, rtlil::CellOp op) {
+  void convert_cell(RTLIL::Module *mod, rtlil::CellOpInterface op) {
     RTLIL::Cell *c =
-        mod->addCell(std::string(op.getName()), std::string(op.getType()));
+        mod->addCell(std::string(op.getCellName()), std::string(op.getCellType()));
     std::vector<std::string> signature;
-    for (auto port : op.getPorts()) {
+    for (auto port : op.getCellPorts()) {
       std::string portName = llvm::cast<mlir::StringAttr>(port).str();
       signature.push_back(portName);
     }
-    for (const auto &it : llvm::enumerate(op.getOperands())) {
+    for (const auto &it : llvm::enumerate(op.getCellConnections())) {
       auto conn = it.value();
       log_assert(it.index() < signature.size());
       auto portName = signature[it.index()];
       c->setPort(portName, convert_signal(mod, conn));
     }
-    for (auto param : op.getParameters()) {
+    for (auto param : op.getCellParameters()) {
       auto paramAttr = llvm::cast<rtlil::ParameterAttr>(param);
       std::string paramName = paramAttr.getName().str();
       int64_t paramValue = paramAttr.getValue().getInt();
