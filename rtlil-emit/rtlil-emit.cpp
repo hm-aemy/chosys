@@ -239,7 +239,7 @@ public:
     for (auto &op : moduleOp.getBody()->getOperations()) {
       if (auto wireOp = mlir::dyn_cast<rtlil::WireOp>(op)) {
         convert_wire(new_module, wireOp);
-      } else if (auto cellOp = mlir::dyn_cast<rtlil::CellOp>(op)) {
+      } else if (auto cellOp = mlir::dyn_cast<rtlil::CellOpInterface>(op)) {
         convert_cell(new_module, cellOp);
       } else if (auto connOp = mlir::dyn_cast<rtlil::WConnectionOp>(op)) {
         convert_connection(new_module, connOp);
