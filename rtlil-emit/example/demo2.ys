@@ -1,0 +1,11 @@
+read_mlir cpu2.mlir
+# ---------------------------------------------------------------------------
+# Reverse the normalization
+simplemap t:$buf t:$concat %u t:$slice %u
+# Erase wires created by splice before we erase anything else
+setattr -set keep 1 w:*splice* %n
+opt_clean -x
+# Erase wires created by bufnorm
+setattr -unset keep
+opt_clean -x
+dump --sorted -o after2.il

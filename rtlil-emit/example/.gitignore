@@ -1,4 +1,4 @@
-after.il
-before.il
-mid.il
+after*.il
+before*.il
+mid*.il
 cpu.mlir
