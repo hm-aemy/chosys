@@ -13,6 +13,7 @@
     {
       devShells.${system}.default = pkgs.mkShell.override { stdenv = pkgs.clangStdenv; } {
         packages = with pkgs; [
+          iverilog
           clang-yosys
           clang-tools_19
           clang_19

@@ -69,7 +69,7 @@ public:
     return b.create<rtlil::ConstOp>(
         loc,
         rtlil::MValueType::get(
-            &ctx, mlir::IntegerAttr::get(b.getI32Type(), const_bits.size())),
+            &ctx, mlir::IntegerAttr::get(b.getI32Type(), const_bits.size())), // only i32 supported?
         (mlir::ArrayAttr)aa);
   }
 

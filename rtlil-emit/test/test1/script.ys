@@ -1,0 +1,4 @@
+read_mlir out/input_rtlil.mlir
+hierarchy -check -top top_5
+# ---------------------------------------------------------------------------
+write_verilog out/cpu2.v
