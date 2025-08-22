@@ -7,12 +7,12 @@ final: prev: rec {
     }).overrideAttrs
       (
         finalAttrs: previousAttrs: {
-          version = "0.51";
+          version = "0.55";
           src = prev.fetchFromGitHub {
             owner = "YosysHQ";
             repo = "yosys";
-            rev = "f95de7d3403482194fe641126aa5046078853612";
-            hash = "sha256-fBweo6n4Tb4mhO1NfvK/8vjxGfcEZZyGA7ITey9Bst0=";
+            tag = "v${finalAttrs.version}";
+            hash = "sha256-GddNbAtH5SPm7KTa5kCm/vGq4xOczx+jCnOSQl55gUI=";
             fetchSubmodules = true;
             leaveDotGit = true;
             inherit (previousAttrs.src) postFetch; # Preserve the postFetch script
