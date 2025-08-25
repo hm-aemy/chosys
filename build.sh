@@ -1,3 +1,4 @@
+set -euo pipefail
 #LLVM
 
 mkdir -p ./circt/llvm/build;
