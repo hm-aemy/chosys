@@ -18,14 +18,13 @@
           clang-yosys
           clang-tools_19
           clang_19
-          lld
+          llvmPackages.bintools
           llvm
           cmake
           gnumake
           ninja
         ];
         shellHook = ''
-          export LD_LIBRARY_PATH="${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:$LD_LIBRARY_PATH";
           export PATH=$PWD/circt/build/bin:$PATH;
         '';
       };
