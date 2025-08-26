@@ -43,6 +43,7 @@ set(LIBS
         ${dialect_libs}
         ${conversion_libs}
         CIRCTRTLIL
+        CIRCTExportVerilog
         MLIRAnalysis
         MLIRCallInterfaces
         MLIRCastInterfaces
