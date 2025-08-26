@@ -1,5 +1,21 @@
-CompileFlags:
-  CompilationDatabase: ./circt/build
-Diagnostics:
-  Suppress: 
-    - "misc-definitions-in-headers"
+If:
+  PathMatch: "rtlil-emit/*"
+  CompileFlags:
+    CompilationDatabase: "rtlil-emit/build"
+
+---
+
+If:
+  PathMatch: "circt/*"
+  CompileFlags:
+    CompilationDatabase: "circt/build"
+  Diagnostics:
+    Suppress:
+      - "misc-definitions-in-headers"
+
+---
+
+If:
+  PathMatch: "circt/llvm/*"
+  CompileFlags:
+    CompilationDatabase: "circt/llvm/build"
