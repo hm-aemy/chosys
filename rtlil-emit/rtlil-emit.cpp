@@ -14,9 +14,11 @@
 #include "mlir/Target/LLVMIR/Export.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/raw_os_ostream.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "circt/Dialect/RTLIL/RTLIL.h"
 #include "circt/Dialect/RTLIL/RTLILPasses.h"
+#include "circt/Conversion/ExportVerilog.h"
 
 // Malarkey - I think this is just not generally exposed?
 // TODO move elsewhere?
@@ -191,6 +193,14 @@ class RTLILifier {
       log_error("Unhandled RTLIL dialect value producing op\n");
     }
   }
+  void convertLoc(RTLIL::AttrObject* obj, const mlir::Location& loc) {
+    auto emitter = LocationEmitter(LoweringOptions::LocationInfoStyle::Plain, loc);
+    obj->attributes[RTLIL::ID::src] = RTLIL::Const(emitter.strref().data());
+    // std::string s;
+    // llvm::raw_string_ostream os(s);
+    // loc.print(os);
+    // obj->attributes[RTLIL::ID::src] = RTLIL::Const(os.str());
+  }
 
 public:
   RTLILifier(RTLIL::Design *d) : design(d) {}
@@ -207,6 +217,7 @@ public:
   void convert_cell(RTLIL::Module *mod, rtlil::CellOpInterface op) {
     RTLIL::Cell *c =
         mod->addCell(std::string(op.getCellName()), std::string(op.getCellType()));
+    convertLoc(c, op.getLoc());
     std::vector<std::string> signature;
     for (auto port : op.getCellPorts()) {
       std::string portName = llvm::cast<mlir::StringAttr>(port).str();
