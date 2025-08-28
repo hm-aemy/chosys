@@ -3,7 +3,7 @@
 
 default: ALL
 
-ALL: test1
+ALL: test1 test2 clean
 
 test1/out:
 	mkdir -p test1/out
@@ -26,3 +26,16 @@ test2/out:
 
 test2/out/GCD_rtlil.mlir: test2/GCD.mlir test2/out
 	circt-opt --convert-comb-to-rtlil $< > $@
+
+test2/out/cpu2.v: test2/out test2/out/GCD_rtlil.mlir test2/script.ys
+	cd test2 && \
+	yosys -m ../../build/librtlil-emit.so script.ys
+
+test2/out/sim: test2/out/cpu2.v test2/tb.v
+	iverilog -o $@ $^
+
+test2: test2/out/sim
+	vvp test2/out/sim tb
+
+clean:
+	rm -rf test1/out test2/out

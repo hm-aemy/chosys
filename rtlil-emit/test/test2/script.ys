@@ -1,4 +1,4 @@
-read_mlir GCD_rtlil.mlir
-hierarchy -check -top top_5
+read_mlir out/GCD_rtlil.mlir
+hierarchy -check -top top_1
 # ---------------------------------------------------------------------------
 write_verilog out/cpu2.v
