@@ -1,5 +1,6 @@
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
 #include "mlir/ExecutionEngine/OptUtils.h"
+#include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
 #include "mlir/IR/Verifier.h"
@@ -99,6 +100,9 @@ public:
     std::vector<mlir::Value> connections;
     std::vector<mlir::Attribute> parameters;
     std::vector<mlir::Attribute> signature;
+    std::vector<mlir::NamedAttribute> attrs;
+    auto attr = mlir::NamedAttribute(std::string("hi"), mlir::StringAttr::get(&ctx, "hello"));
+    attrs.push_back(attr);
     log_debug("converting cell %s\n", log_id(cell));
     for (auto [port, sigspec] : cell->connections()) {
       auto val = convert_sigspec(sigspec);
@@ -119,8 +123,9 @@ public:
     mlir::StringAttr cellname = mlir::StringAttr::get(&ctx, cell->name.c_str());
     mlir::StringAttr celltype = mlir::StringAttr::get(&ctx, cell->type.c_str());
     mlir::ArrayAttr cellsignature = b.getArrayAttr(signature);
+    mlir::DictionaryAttr cellattrs = b.getDictionaryAttr(attrs);
     return b.create<rtlil::CellOp>(loc, cellname, celltype, connections,
-                                   cellsignature, cellparameters);
+                                   cellsignature, cellparameters, cellattrs);
   }
 
   rtlil::WConnectionOp convert_connection(RTLIL::SigSig ss) {
@@ -236,6 +241,14 @@ public:
       int64_t paramValue = paramAttr.getValue().getInt();
       c->setParam(paramName, paramValue);
     }
+    // TODO special-case src attributes
+    for (auto attr : op.getCellExtraAttrs()) {
+      if (auto s = mlir::dyn_cast<mlir::StringAttr>(attr.getValue())) {
+        c->attributes[attr.getName().str()] = std::string(s.getValue());
+      } else {
+        log_error("Non-string attributes not yet supported");
+      }
+    }
   }
   void convert_connection(RTLIL::Module *mod, rtlil::WConnectionOp op) {
     mlir::Value lhs = op.getLhs();
@@ -292,6 +305,7 @@ struct MlirFrontend : public Frontend {
         mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &ctx);
     if (!owningModule) {
       llvm::errs() << "Error can't load file " << filename << "\n";
+      log_abort();
     }
     auto moduleOp = std::make_shared<mlir::ModuleOp>(owningModule.release());
     RTLILifier convertor(design);
