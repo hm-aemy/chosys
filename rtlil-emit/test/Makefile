@@ -3,7 +3,7 @@
 
 default: ALL
 
-ALL: test1 test2 clean
+ALL: test1 test2
 
 test1/out:
 	mkdir -p test1/out
