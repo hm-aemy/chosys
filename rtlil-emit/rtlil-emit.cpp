@@ -49,13 +49,12 @@ public:
                rtlil::MValueType::get(
                    &ctx, mlir::IntegerAttr::get(b.getI32Type(), wire->width)),
                mlir::StringAttr::get(&ctx, wire->name.c_str()),
-               mlir::IntegerAttr::get(b.getI32Type(), wire->width),
-               mlir::IntegerAttr::get(b.getI32Type(), wire->start_offset),
+               mlir::BoolAttr::get(&ctx, wire->is_signed),
                mlir::IntegerAttr::get(b.getI32Type(), wire->port_id),
+               mlir::IntegerAttr::get(b.getI32Type(), wire->start_offset),
                mlir::BoolAttr::get(&ctx, wire->port_input),
                mlir::BoolAttr::get(&ctx, wire->port_output),
-               mlir::BoolAttr::get(&ctx, wire->upto),
-               mlir::BoolAttr::get(&ctx, wire->is_signed));
+               mlir::BoolAttr::get(&ctx, wire->upto));
   }
 
   rtlil::ConstOp convert_const(RTLIL::Const *c) {
@@ -69,7 +68,9 @@ public:
     return b.create<rtlil::ConstOp>(
         loc,
         rtlil::MValueType::get(
-            &ctx, mlir::IntegerAttr::get(b.getI32Type(), const_bits.size())), // only i32 supported?
+            &ctx,
+            mlir::IntegerAttr::get(b.getI32Type(),
+                                   const_bits.size())), // only i32 supported?
         (mlir::ArrayAttr)aa);
   }
 
@@ -196,7 +197,7 @@ public:
   RTLILifier(RTLIL::Design *d) : design(d) {}
   void convert_wire(RTLIL::Module *mod, rtlil::WireOp op) {
     RTLIL::Wire *w = mod->addWire(std::string(op.getName()));
-    w->width = op.getWidth();
+    w->width = op.getWidth().getInt();
     w->start_offset = op.getStartOffset();
     w->port_id = op.getPortId();
     w->port_input = op.getPortInput();
@@ -205,8 +206,8 @@ public:
     w->is_signed = op.getIsSigned();
   }
   void convert_cell(RTLIL::Module *mod, rtlil::CellOpInterface op) {
-    RTLIL::Cell *c =
-        mod->addCell(std::string(op.getCellName()), std::string(op.getCellType()));
+    RTLIL::Cell *c = mod->addCell(std::string(op.getCellName()),
+                                  std::string(op.getCellType()));
     std::vector<std::string> signature;
     for (auto port : op.getCellPorts()) {
       std::string portName = llvm::cast<mlir::StringAttr>(port).str();

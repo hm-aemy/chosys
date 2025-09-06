@@ -1,5 +1,5 @@
 
-.PHONY: test1
+.PHONY: test1 test2 clean
 
 default: ALL
 
@@ -9,7 +9,7 @@ test1/out:
 	mkdir -p test1/out
 
 test1/out/input_rtlil.mlir: test1/input.mlir test1/out
-	circt-opt --convert-comb-to-rtlil $< > $@
+	circt-opt --convert-hw-to-rtlil $< > $@
 
 test1/out/cpu2.v: test1/out test1/out/input_rtlil.mlir test1/script.ys
 	cd test1 && \
@@ -25,7 +25,7 @@ test2/out:
 	mkdir -p test2/out
 
 test2/out/GCD_rtlil.mlir: test2/GCD.mlir test2/out
-	circt-opt --convert-comb-to-rtlil $< > $@
+	circt-opt --convert-hw-to-rtlil $< > $@
 
 test2/out/cpu2.v: test2/out test2/out/GCD_rtlil.mlir test2/script.ys
 	cd test2 && \
