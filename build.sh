@@ -10,7 +10,8 @@ cmake -S ./circt/llvm/llvm -B ./circt/llvm/build -G Ninja \
   -DLLVM_USE_SPLIT_DWARF=ON   \
   -DLLVM_ENABLE_LLD=ON \
   -DLLVM_PARALLEL_LINK_JOBS=1 \
-  -DLLVM_OPTIMIZED_TABLEGEN=ON;
+  -DLLVM_OPTIMIZED_TABLEGEN=ON \
+  -DLLVM_CCACHE_BUILD=ON;
 ninja -C ./circt/llvm/build;
 
 #CIRCT
