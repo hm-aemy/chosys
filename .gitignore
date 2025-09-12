@@ -1,1 +1,3 @@
 rtlil-emit/build
+rtlil-emit/.cache
+.direnv
