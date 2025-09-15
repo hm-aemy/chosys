@@ -1,11 +1,8 @@
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
-#include "mlir/ExecutionEngine/OptUtils.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
 #include "mlir/IR/Verifier.h"
-#include "mlir/InitAllDialects.h"
-#include "mlir/InitAllPasses.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Support/FileUtilities.h"
@@ -18,7 +15,6 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "circt/Dialect/RTLIL/RTLIL.h"
-#include "circt/Dialect/RTLIL/RTLILPasses.h"
 #include "circt/Conversion/ExportVerilog.h"
 
 // Malarkey - I think this is just not generally exposed?
@@ -241,10 +237,24 @@ public:
     }
     // TODO special-case src attributes
     for (auto attr : op.getCellExtraAttrs()) {
+      std::string name = attr.getName().str();
       if (auto s = mlir::dyn_cast<mlir::StringAttr>(attr.getValue())) {
-        c->attributes[attr.getName().str()] = std::string(s.getValue());
+        c->attributes[name] = std::string(s.getValue());
+      } else if (auto i = mlir::dyn_cast<mlir::IntegerAttr>(attr.getValue())) {
+        c->attributes[name] = RTLIL::Const((long long)i.getInt());
+      } else if (auto arr_attr = mlir::dyn_cast<mlir::ArrayAttr>(attr.getValue())) {
+        llvm::ArrayRef arr_ref = arr_attr.getValue();
+        std::vector<RTLIL::State> v;
+        for (auto element : arr_ref) {
+          if (auto i = mlir::dyn_cast<rtlil::StateEnumAttr>(element))
+            v.push_back((RTLIL::State)i.getValue());
+          else
+            log_error("Attribute %s contains elements other state\n", name);
+        }
+        c->attributes[name] = RTLIL::Const((long long)i.getInt());
       } else {
-        log_error("Non-string attributes not yet supported");
+        // TODO add array of states
+        log_error("Non-string attributes %s on cell %s: MLIR type unsupported by convertor", name, c->name);
       }
     }
   }
