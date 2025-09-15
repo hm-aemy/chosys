@@ -101,8 +101,6 @@ public:
     std::vector<mlir::Attribute> parameters;
     std::vector<mlir::Attribute> signature;
     std::vector<mlir::NamedAttribute> attrs;
-    auto attr = mlir::NamedAttribute(std::string("hi"), mlir::StringAttr::get(&ctx, "hello"));
-    attrs.push_back(attr);
     log_debug("converting cell %s\n", log_id(cell));
     for (auto [port, sigspec] : cell->connections()) {
       auto val = convert_sigspec(sigspec);
