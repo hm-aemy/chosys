@@ -1,3 +1,4 @@
+#include "circt/Support/LLVM.h"
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/Attributes.h"
@@ -67,8 +68,8 @@ public:
                wireattrs);
   }
 
-  rtlil::ConstOp convert_const(RTLIL::Const *c) {
-    log_debug("converting const %s\n", log_const(*c));
+  rtlil::ConstOp convert_const_sig(RTLIL::Const *c) {
+    log_debug("converting const sig %s\n", log_const(*c));
     std::vector<mlir::Attribute> const_bits;
     for (State bit : *c)
       const_bits.push_back(
@@ -78,9 +79,7 @@ public:
     return b.create<rtlil::ConstOp>(
         loc,
         rtlil::MValueType::get(
-            &ctx,
-            mlir::IntegerAttr::get(b.getI32Type(),
-                                   const_bits.size())), // only i32 supported?
+            &ctx, mlir::IntegerAttr::get(b.getI32Type(), const_bits.size())),
         (mlir::ArrayAttr)aa);
   }
 
@@ -89,7 +88,7 @@ public:
     if (sigspec.is_fully_const()) {
       std::vector<mlir::Attribute> const_bits;
       RTLIL::Const domain_const = sigspec.as_const();
-      rtlil::ConstOp c = convert_const(&domain_const);
+      rtlil::ConstOp c = convert_const_sig(&domain_const);
       log_assert(mlir::verify(c).succeeded());
       return c.getResult();
     } else if (sigspec.is_wire()) {
@@ -102,33 +101,35 @@ public:
     }
   }
 
-  std::tuple<mlir::Location, mlir::DictionaryAttr> convert_attrs(RTLIL::AttrObject *obj, const IdString& obj_name) {
-    std::vector<mlir::NamedAttribute> attrs;
-    auto cell_loc = loc;
-    for (auto& [name, value] : obj->attributes) {
-      mlir::StringAttr attrname = mlir::StringAttr::get(&ctx, name.c_str());
-      if (name.str() == "\\src") {
-        mlir::StringAttr attrvalue = mlir::StringAttr::get(&ctx, value.decode_string());
-        cell_loc = mlir::FileLineColRange::get(attrvalue);
-        continue;
-      }
-      if (value.flags & RTLIL::ConstFlags::CONST_FLAG_STRING) {
-        mlir::StringAttr attrvalue = mlir::StringAttr::get(&ctx, value.decode_string());
-        auto attr  = mlir::NamedAttribute(attrname, attrvalue);
-        attrs.push_back(attr);
+  mlir::Attribute convert_const(RTLIL::Const& c) {
+    if (c.flags & RTLIL::ConstFlags::CONST_FLAG_STRING) {
+      return mlir::StringAttr::get(&ctx, c.decode_string());
+    } else {
+      if (auto i = c.try_as_int(true)) {
+        auto signedness = c.flags & RTLIL::CONST_FLAG_SIGNED ? mlir::IntegerType::Signed : mlir::IntegerType::Unsigned;
+        mlir::Type itype = mlir::IntegerType::get(&ctx, c.size(), signedness);
+        return mlir::IntegerAttr::get(itype, *i);
       } else {
-        if (auto i = value.try_as_int(true)) {
-          mlir::Type itype = mlir::IntegerType::get(&ctx, value.size(), mlir::IntegerType::Signed);
-          auto attrname = mlir::StringAttr::get(&ctx, name.c_str());
-          auto attrvalue  = mlir::IntegerAttr::get(itype, *i);
-          auto attr  = mlir::NamedAttribute(attrname, attrvalue);
-          attrs.push_back(attr);
-        } else {
-          log_error("Unsupported non-string attribute %s: could not decode as int: %s\n", name, obj_name, log_const(value));
-        }
+        log_error("Unsupported const %s\n", log_const(c));
       }
     }
-    return std::make_tuple(cell_loc, b.getDictionaryAttr(attrs));
+  }
+  std::tuple<mlir::Location, mlir::DictionaryAttr> convert_attrs(RTLIL::AttrObject *obj, const IdString& obj_name) {
+    auto obj_loc = loc;
+    std::vector<mlir::NamedAttribute> attrs;
+    for (auto& [name, value] : obj->attributes) {
+      mlir::StringAttr attrname = mlir::StringAttr::get(&ctx, name.c_str());
+      auto attrvalue = convert_const(value);
+      if (name.str() == "\\src") {
+        if (auto s = dyn_cast<mlir::StringAttr>(attrvalue)) {
+          obj_loc = mlir::FileLineColRange::get(s);
+          continue;
+        }
+      } else {
+        attrs.push_back(b.getNamedAttr(attrname, attrvalue));
+      }
+    }
+    return std::make_tuple(obj_loc, b.getDictionaryAttr(attrs));
   }
 
   rtlil::CellOp convert_cell(RTLIL::Cell *cell) {
@@ -239,7 +240,7 @@ struct MlirBackend : public Backend {
 
 class RTLILifier {
   RTLIL::Design *design;
-  RTLIL::Const convert_const(rtlil::ConstOp op) {
+  RTLIL::Const convert_const_sig(rtlil::ConstOp op) {
     std::vector<RTLIL::State> bits;
     for (auto bit : op.getValueAttr()) {
       unsigned char raw = llvm::cast<rtlil::StateEnumAttr>(bit).getInt();
@@ -251,7 +252,7 @@ class RTLILifier {
   RTLIL::SigSpec convert_signal(RTLIL::Module *mod, mlir::Value v) {
     mlir::Operation *def = v.getDefiningOp();
     if (auto constOp = mlir::dyn_cast<rtlil::ConstOp>(def)) {
-      return convert_const(constOp);
+      return convert_const_sig(constOp);
     } else if (auto wireOp = mlir::dyn_cast<rtlil::WireOp>(def)) {
       std::string wireName =
           llvm::cast<mlir::StringAttr>(wireOp.getNameAttr()).str();
@@ -264,27 +265,55 @@ class RTLILifier {
       log_error("Unhandled RTLIL dialect value producing op\n");
     }
   }
+  RTLIL::Const convert_const(mlir::Attribute value, bool is_param) {
+    Const c;
+    if (auto s = mlir::dyn_cast<mlir::StringAttr>(value)) {
+      log_debug("string\n");
+      c = std::string(s.getValue());
+      c.flags |= RTLIL::ConstFlags::CONST_FLAG_STRING;
+    } else if (auto b = mlir::dyn_cast<mlir::BoolAttr>(value)) {
+      log_debug("bool\n");
+      c = Const(b.getValue(), 1);
+    } else if (auto i = mlir::dyn_cast<mlir::IntegerAttr>(value)) {
+      log_debug("int\n");
+      mlir::Type itype = i.getType();
+      auto iwidth = itype.getIntOrFloatBitWidth();
+      if (itype.isSignedInteger()) {
+        c = Const((long long)i.getSInt(), iwidth);
+        if (is_param)
+          c.flags |= RTLIL::ConstFlags::CONST_FLAG_SIGNED;
+      } else if (itype.isUnsignedInteger()) {
+        c = Const((long long)i.getUInt(), iwidth);
+      } else if (itype.isSignlessInteger()) {
+        c = Const((long long)i.getInt(), iwidth);
+      } else {
+        i.dump();
+        log_error("Weird integer\n");
+      }
+    } else if (auto arr_attr = mlir::dyn_cast<mlir::ArrayAttr>(value)) {
+      log_debug("array\n");
+      llvm::ArrayRef arr_ref = arr_attr.getValue();
+      std::vector<RTLIL::State> v;
+      for (auto element : arr_ref) {
+        if (auto i = mlir::dyn_cast<rtlil::StateEnumAttr>(element)) {
+          v.push_back((RTLIL::State)i.getValue());
+        } else {
+          value.dump();
+          log_error("Array attribute contains elements other than RTLIL State\n");
+        }
+      }
+      c = (std::move(v));
+    } else {
+      value.dump();
+      log_error("Attribute value has unknown type\n", value.getTypeID());
+    }
+    return c;
+  }
   void convert_attrs(RTLIL::AttrObject* obj, mlir::DictionaryAttr attrs, const IdString& obj_name) {
     for (auto attr : attrs) {
       std::string name = attr.getName().str();
-      if (auto s = mlir::dyn_cast<mlir::StringAttr>(attr.getValue())) {
-        obj->attributes[name] = std::string(s.getValue());
-      } else if (auto i = mlir::dyn_cast<mlir::IntegerAttr>(attr.getValue())) {
-        obj->attributes[name] = RTLIL::Const((long long)i.getSInt());
-      } else if (auto arr_attr = mlir::dyn_cast<mlir::ArrayAttr>(attr.getValue())) {
-        llvm::ArrayRef arr_ref = arr_attr.getValue();
-        std::vector<RTLIL::State> v;
-        for (auto element : arr_ref) {
-          if (auto i = mlir::dyn_cast<rtlil::StateEnumAttr>(element))
-            v.push_back((RTLIL::State)i.getValue());
-          else
-            log_error("Array attribute %s contains elements other than RTLIL State\n", name);
-        }
-        obj->attributes[name] = RTLIL::Const(std::move(v));
-      } else {
-        // TODO add array of states
-        log_error("Non-string attribute %s on design object %s: MLIR type unsupported by convertor\n", name, obj_name);
-      }
+      log_debug("attribute %s on object %s\n", name, obj_name);
+      obj->attributes[name] = convert_const(attr.getValue(), false);
     }
   }
   void convert_loc(RTLIL::AttrObject* obj, const mlir::Location& loc) {
@@ -311,7 +340,7 @@ public:
   void convert_cell(RTLIL::Module *mod, rtlil::CellOpInterface op) {
     RTLIL::Cell *c = mod->addCell(std::string(op.getCellName()),
                                   std::string(op.getCellType()));
-    convertLoc(c, op.getLoc());
+    convert_loc(c, op.getLoc());
     std::vector<std::string> signature;
     for (auto port : op.getCellPorts()) {
       std::string portName = llvm::cast<mlir::StringAttr>(port).str();
@@ -326,8 +355,7 @@ public:
     for (auto param : op.getCellParameters()) {
       auto paramAttr = llvm::cast<rtlil::ParameterAttr>(param);
       std::string paramName = paramAttr.getName().str();
-      int64_t paramValue = paramAttr.getValue().getInt();
-      c->setParam(paramName, paramValue);
+      c->setParam(paramName, convert_const(paramAttr.getValue(), true));
     }
     convert_loc(c, op.getLoc());
     convert_attrs(c, op.getCellExtraAttrs(), c->name);
