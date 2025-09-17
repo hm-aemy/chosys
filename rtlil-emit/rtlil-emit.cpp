@@ -199,10 +199,21 @@ struct MlirBackend : public Backend {
                std::vector<std::string> args, RTLIL::Design *design) override {
     log_header(design, "Executing MLIR backend.\n");
     size_t argidx;
+    bool asm_mode = false;
     for (argidx = 1; argidx < args.size(); argidx++) {
+      std::string arg = args[argidx];
+      if (arg == "-bc") {
+        asm_mode = false;
+        continue;
+      }
+      if (arg == "-asm") {
+        asm_mode = true;
+        continue;
+      }
       break;
     }
     extra_args(f, filename, args, argidx);
+    log_debug("asm: %d filename %s\n", asm_mode, filename);
     llvm::raw_os_ostream osos(*f);
     mlir::MLIRContext ctx;
     ctx.getOrLoadDialect<rtlil::RTLILDialect>();
@@ -213,13 +224,16 @@ struct MlirBackend : public Backend {
       convertor.convert_module(mod);
     }
     // TODO: optional bitcode
-    // // llvm::StringRef producer = yosys_maybe_version();
-    // auto res = mlir::writeBytecodeToFile(convertor.convert_module(mod),
-    //                                      osos,
-    //                                      mlir::BytecodeWriterConfig());
-    // if (res.failed())
-    //   log_error("Failed to convert RTLIL module %s\n", mod->name);
-    convertor.fake_top.print(osos, flags);
+    if (asm_mode)
+      convertor.fake_top.print(osos, flags);
+    else {
+      llvm::StringRef producer = yosys_maybe_version();
+      auto res = mlir::writeBytecodeToFile(convertor.fake_top,
+                                          osos,
+                                          mlir::BytecodeWriterConfig(producer));
+      if (res.failed())
+        log_error("Failed to convert RTLIL\n");
+    }
   }
 } MlirBackend;
 
