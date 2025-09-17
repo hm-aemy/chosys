@@ -76,7 +76,7 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 separate_arguments(YOSYS_LDFLAGS_LIST UNIX_COMMAND "${YOSYS_LDFLAGS}")
-separate_arguments(YOSYS_CXXFLAGS_LIST UNIX_COMMAND "${YOSYS_CXXFLAGS} -Wno-cast-qual")
+separate_arguments(YOSYS_CXXFLAGS_LIST UNIX_COMMAND "${YOSYS_CXXFLAGS} -Wno-cast-qual -Wno-unused-parameter")
 add_compile_options(${YOSYS_CXXFLAGS_LIST})
 set(LLVM_REQUIRES_EH ON)
 # add_llvm_executable(rtlil-opt rtlil-opt.cpp)
