@@ -11,15 +11,14 @@ final: prev: rec {
           src = prev.fetchFromGitHub {
             owner = "YosysHQ";
             repo = "yosys";
-            rev = "8cd6ee65605104017d29ef102ee1552dba0d192a";
-            hash = "sha256-4yO1dSryw1SbhM8F5bxQiXxdbDaShrFp96elC3VqpRo=";
+            rev = "83fa0448107e31360393366ba4bef15a713ba5f4";
+            hash = "sha256-FZ1h3p0NS3W/eqHgROvpOdib73qX+gsUGwGYJUA9uVg=";
             fetchSubmodules = true;
             leaveDotGit = true;
             inherit (previousAttrs.src) postFetch; # Preserve the postFetch script
           };
           patches = [
             (builtins.elemAt previousAttrs.patches 1)
-            (builtins.elemAt previousAttrs.patches 2)
           ];
           doCheck = false;
           makeFlags = previousAttrs.makeFlags ++ [
