@@ -1,11 +1,9 @@
-read_rtlil cpu.noattr.il
+read_rtlil cpu.il
 
 # ---------------------------------------------------------------------------
 # Prerequisites for an otherwise arbitrary design
 # to be cleanly roundtrippable
-# (+ no pre-existing attributes as we don't have like setattr -unset-all)
 proc -noopt
-setattr -unset full_case
 hierarchy -check -auto-top
 opt_clean
 # We never generate these in yosys, if we have some then it's because
