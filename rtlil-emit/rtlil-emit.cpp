@@ -46,7 +46,7 @@ public:
   rtlil::WireOp convert_wire(RTLIL::Wire *wire) {
     log_debug("converting wire %s\n", log_id(wire));
     log_assert(!wiremap.contains(wire));
-    return wiremap[wire] = builder.create<rtlil::WireOp>(
+    return wiremap[wire] = rtlil::WireOp::create(builder,
                loc,
                rtlil::MValueType::get(
                    &ctx,
@@ -68,7 +68,7 @@ public:
           rtlil::StateEnumAttr::get(&ctx, (rtlil::StateEnum)bit));
     mlir::ArrayAttr aa = builder.getArrayAttr(const_bits);
     // TODO flags?
-    return builder.create<rtlil::ConstOp>(
+    return rtlil::ConstOp::create(builder,
         loc,
         rtlil::MValueType::get(
             &ctx,
@@ -122,14 +122,14 @@ public:
     mlir::StringAttr cellname = mlir::StringAttr::get(&ctx, cell->name.c_str());
     mlir::StringAttr celltype = mlir::StringAttr::get(&ctx, cell->type.c_str());
     mlir::ArrayAttr cellsignature = builder.getArrayAttr(signature);
-    return builder.create<rtlil::CellOp>(loc, cellname, celltype, connections,
+    return rtlil::CellOp::create(builder,loc, cellname, celltype, connections,
                                          cellsignature, cellparameters);
   }
 
   rtlil::WConnectionOp convert_connection(RTLIL::SigSig ss) {
     log_debug("converting connection %s %s\n", log_signal(ss.first),
               log_signal(ss.second));
-    return builder.create<rtlil::WConnectionOp>(loc, convert_sigspec(ss.first),
+    return rtlil::WConnectionOp::create(builder,loc, convert_sigspec(ss.first),
                                                 convert_sigspec(ss.second));
   }
 
