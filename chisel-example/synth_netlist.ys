@@ -1,0 +1,10 @@
+read_mlir bitStuff.mlir
+check
+write_verilog bitStuff.rtl.v
+synth -top BitStuff_1
+techmap
+flatten
+splitnets -ports
+hilomap -hicell LOGIC1 Y -locell LOGIC0 Y
+clean
+write_verilog -noattr -noexpr bitStuff.nl.v

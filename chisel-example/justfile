@@ -1,0 +1,5 @@
+run-chisel:
+    scala-cli run bitStuff.scala
+
+run-yosys:
+    yosys -m ../rtlil-emit/build/librtlil-emit.so synth_netlist.ys

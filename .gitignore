@@ -1,3 +1,5 @@
 rtlil-emit/build
 rtlil-emit/.cache
+chisel-example/.bsp
+chisel-example/.scala-build
 .direnv
